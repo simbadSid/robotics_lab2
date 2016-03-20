@@ -1,58 +1,162 @@
 #include "DataReader.hpp"
 
-int DataReader::initBackground(){
+int DataReader::initBackground()
+{
 	int i;
-	for (i=0;i<BN;i++){
+	for (i=0;i<BN;i++)
 		background[i] = dataLaserR[i];
-	}
+
+    return 1;
+}
+
+int DataReader::updateBackground()
+{
+//	initBackground();
     return 1;
 
 }
 
-int DataReader::updateBackground() {
-	initBackground();
-    return 1;
-
-}
-
-int DataReader::detectMotion(int threshold) {
+int DataReader::detectMotion(int threshold)
+{
 	int i;
-		for (i=0;i<BN;i++){
-			detection[i] = 0;
-			float delta = std::abs(background[i] - dataLaserR[i]);
-			if (delta > threshold){
-				detection[i] =1;
-			}
-		}
+	for (i=0;i<BN;i++)
+	{
+		detection[i] = 0;
+		if ((background[i] - dataLaserR[i]) > threshold)
+			detection[i] =1;
+
+	}
     return 1;
 
 }
 
-int DataReader::buildCluster(int threshold) {
+void DataReader::initClusterAndObject()
+{
+	biggestClusterBigining	= -1;
+	biggestClusterEnd		= -1;
+	currentClusterBigining	= -1;
+	currentClusterEnd		= -1;
+
+	currentBiggestX			= -1;
+	currentBiggestY			= -1;
+	currentSmallestX		= -1;
+	currentSmallestY		= -1;
+}
+
+void DataReader::initBestCluster()
+{
+	this->biggestClusterBigining= -1;
+	this->biggestClusterEnd		= -1;
+	this->currentClusterBigining= -1;
+	this->currentClusterEnd		= -1;
+
+	this->xmax				= -1;
+	this->ymax				= -1;
+	this->xmin				= -1;
+	this->ymin				= -1;
+
+	this->currentBiggestX		= -1;
+	this->currentBiggestY		= -1;
+	this->currentSmallestX		= -1;
+	this->currentSmallestY		= -1;
+}
+
+void DataReader::initCurrentObject(int beam)
+{
+	currentClusterBigining	= beam;
+	currentClusterEnd		= beam;
+	currentBiggestX			= dataLaserX[beam];
+	currentBiggestY			= dataLaserY[beam];
+	currentSmallestX		= dataLaserX[beam];
+	currentSmallestY		= dataLaserY[beam];
+}
+
+void DataReader::updateBestCluster()
+{
+	int deltaBest		= biggestClusterEnd - biggestClusterBigining;
+	int deltaCurrent	= currentClusterEnd - currentClusterBigining;
+	if ((biggestClusterEnd == -1) ||(deltaCurrent > deltaBest))
+	{
+		biggestClusterBigining	= currentClusterBigining;
+		biggestClusterEnd		= currentClusterEnd;
+		xmax					= currentBiggestX;
+		ymax					= currentBiggestY;
+		xmin					= currentSmallestX;
+		ymin					= currentSmallestY;
+	}
+	currentClusterBigining	= -1;
+	currentClusterEnd		= -1;
+	currentBiggestX			= -1;
+	currentBiggestY			= -1;
+	currentSmallestX		= -1;
+	currentSmallestY		= -1;
+}
+
+void DataReader::updateCurrentObject(int beam)
+{
+	if ((this->currentBiggestX == -1) || (dataLaserX[beam] > this->currentBiggestX))
+		this->currentBiggestX = this->dataLaserX[beam];
+
+	if ((this->currentBiggestY == -1) || (dataLaserY[beam] > this->currentBiggestY))
+		this->currentBiggestY = this->dataLaserY[beam];
+
+	if ((this->currentSmallestX == -1) || (dataLaserX[beam] < this->currentSmallestX))
+		this->currentSmallestX = this->dataLaserX[beam];
+
+	if ((this->currentSmallestY == -1) || (dataLaserY[beam] < this->currentSmallestY))
+		this->currentSmallestY = this->dataLaserY[beam];
+}
+
+int DataReader::buildCluster(int threshold)
+{
 	int i = 0;
-	int nx,ny;
 	int nbcluster = 1;
-	int lastBeam;
-	while (detection[i] != 1){
+	int a0, a1;
+	float lastBeam;
+
+	while (detection[i] != 1)
 		i++;
-	}
-	lastBeam = dataLaser[i];
-	for (nx=0;nx<BN;nx++){
-		cluster[nx] = lastBeam;
-	}
-	for (ny=0; ny<BN; ny++){
-		if (detection[ny] == 1){
-			if ((dataLaser[ny] - lastBeam)<threshold){
-				cluster[ny] = nbcluster;
+
+	if (i == 0)
+		lastBeam = 0;
+	else
+		lastBeam = dataLaser[i];
+
+	for (i=0;i<BN;i++)
+		cluster[i] = lastBeam;
+
+	initClusterAndObject();
+	int lastDetection = -1;
+	for (i=0; i<BN; i++)
+	{
+		if (detection[i] == 1)
+		{
+			int deltaR = std::abs(dataLaserR[i] - dataLaserR[lastDetection]);
+			if (((lastDetection != -1) && (deltaR < 50)) ||
+				((dataLaser[i] - lastBeam)<threshold))
+			{
+				cluster[i] = nbcluster;
+				currentClusterEnd ++;
+				this->updateCurrentObject(i);
 			}
-			else{
+			else
+			{
 				nbcluster = lastBeam;
+				this->updateBestCluster();
+				this->initCurrentObject(i);
 			}
-			lastBeam = dataLaser[ny];
+
+			lastBeam = dataLaser[i];
+			lastDetection = i;
 		}
 	}
-    return NOERROR;
 
+	this->updateBestCluster();
+
+	this->x		= this->xmin + (this->xmax - this->xmin);
+	this->y		= this->ymin + (this->ymax - this->ymin);
+
+	return NOERROR;
 }
 
 int DataReader::detectMotionLR() {

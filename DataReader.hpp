@@ -1,8 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <cv.h>
-#include <highgui.h>
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
 #include <cmath>
 
 /*Beams number*/
@@ -23,7 +23,22 @@ class DataReader{
         /*Directory name of current data set*/
         std::string dataSetName;
         std::string FileName;
-        
+
+        void initClusterAndObject();
+        void updateBestCluster();
+        void initBestCluster();
+        void updateCurrentObject(int beam);
+        void initCurrentObject(int beam);
+    	int biggestClusterBigining;
+    	int biggestClusterEnd;
+    	int currentClusterBigining;
+    	int currentClusterEnd;
+
+    	int currentBiggestX;
+    	int currentBiggestY;
+    	int currentSmallestX;
+    	int currentSmallestY;
+
    public:
 
         /*These matrices allocate the length values retrieved from laser 
